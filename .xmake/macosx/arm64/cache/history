@@ -1,0 +1,13 @@
+{
+    cmdlines = {
+        "xmake f -c --use_system_deps=y",
+        "xmake f -c --use_system_deps=y",
+        "xmake f -c",
+        "xmake f -c",
+        "xmake f -c",
+        "xmake f -c --toolchain=clang --sdk=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "xmake f -m release",
+        "xmake f -c --toolchain=clang --sdk=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk --with_openmp=n",
+        "xmake f -m release"
+    }
+}

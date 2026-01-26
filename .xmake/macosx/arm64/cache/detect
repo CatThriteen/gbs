@@ -1,0 +1,8 @@
+{
+    ["detect.sdks.find_xcode"] = {
+        xcode = { }
+    },
+    find_program = {
+        nim = false
+    }
+}

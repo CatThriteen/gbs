@@ -1,0 +1,26 @@
+[
+{
+  "directory": "/home/g/Documents/lab/GBS/应用/应用/中国电信/recognition/GBS_ELM",
+  "arguments": ["/usr/bin/gcc", "-c", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=gnu++23", "-DEIGEN_NO_DEBUG", "-fopenmp", "-DNDEBUG", "-o", "build/.objs/fancyIndex/linux/x86_64/release/src/main.cpp.o", "src/main.cpp"],
+  "file": "src/main.cpp"
+},
+{
+  "directory": "/home/g/Documents/lab/GBS/应用/应用/中国电信/recognition/GBS_ELM",
+  "arguments": ["/usr/bin/gcc", "-c", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=gnu++23", "-DEIGEN_NO_DEBUG", "-fopenmp", "-DNDEBUG", "-o", "build/.objs/fancyIndex/linux/x86_64/release/src/fancyIndex.cpp.o", "src/fancyIndex.cpp"],
+  "file": "src/fancyIndex.cpp"
+},
+{
+  "directory": "/home/g/Documents/lab/GBS/应用/应用/中国电信/recognition/GBS_ELM",
+  "arguments": ["/usr/bin/gcc", "-c", "-m64", "-fPIC", "-std=gnu++23", "-I/usr/include/eigen3", "-DEIGEN_NO_DEBUG", "-isystem", "/home/g/.xmake/packages/p/pybind11/v2.13.6/8d7565588f4b45f7a0635954fd1f2205/include", "-isystem", "/home/g/.xmake/packages/p/python/3.13.0/b7dd8beff26a4c82bc950462214dc4e3/include/python3.13", "-isystem", "/home/g/.xmake/packages/o/openssl/1.1.1-w/6c51ab6278e2479b883dffafac69fdaf/include", "-fopenmp", "-O3", "-DNDEBUG", "-o", "build/.objs/fancyIndex4py/linux/x86_64/release/src/fancyIndex.cpp.o", "src/fancyIndex.cpp"],
+  "file": "src/fancyIndex.cpp"
+},
+{
+  "directory": "/home/g/Documents/lab/GBS/应用/应用/中国电信/recognition/GBS_ELM",
+  "arguments": ["/usr/bin/gcc", "-c", "-m64", "-fPIC", "-std=gnu++23", "-I/usr/include/eigen3", "-DEIGEN_NO_DEBUG", "-isystem", "/home/g/.xmake/packages/p/pybind11/v2.13.6/8d7565588f4b45f7a0635954fd1f2205/include", "-isystem", "/home/g/.xmake/packages/p/python/3.13.0/b7dd8beff26a4c82bc950462214dc4e3/include/python3.13", "-isystem", "/home/g/.xmake/packages/o/openssl/1.1.1-w/6c51ab6278e2479b883dffafac69fdaf/include", "-fopenmp", "-O3", "-DNDEBUG", "-o", "build/.objs/fancyIndex4py/linux/x86_64/release/src/pywrap.cpp.o", "src/pywrap.cpp"],
+  "file": "src/pywrap.cpp"
+},
+{
+  "directory": "/home/g/Documents/lab/GBS/应用/应用/中国电信/recognition/GBS_ELM",
+  "arguments": ["/usr/bin/gcc", "-c", "-m64", "-fPIC", "-std=gnu++23", "-I/usr/include/eigen3", "-DEIGEN_NO_DEBUG", "-isystem", "/home/g/.xmake/packages/p/pybind11/v2.13.6/8d7565588f4b45f7a0635954fd1f2205/include", "-isystem", "/home/g/.xmake/packages/p/python/3.13.0/b7dd8beff26a4c82bc950462214dc4e3/include/python3.13", "-isystem", "/home/g/.xmake/packages/o/openssl/1.1.1-w/6c51ab6278e2479b883dffafac69fdaf/include", "-fopenmp", "-O3", "-DNDEBUG", "-o", "build/.objs/fancyIndex4py/linux/x86_64/release/src/main.cpp.o", "src/main.cpp"],
+  "file": "src/main.cpp"
+}]

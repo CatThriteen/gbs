@@ -1,0 +1,16 @@
+{
+    with_openmp = {
+        __sourceinfo_default = { },
+        showmenu = true,
+        __scriptdir = "/Users/lizhaowei/code/recognition/GBS_ELM",
+        default = true,
+        __sourceinfo_description = {
+            ["Enable OpenMP"] = {
+                file = "./xmake.lua",
+                line = 14
+            }
+        },
+        __sourceinfo_showmenu = { },
+        description = "Enable OpenMP"
+    }
+}

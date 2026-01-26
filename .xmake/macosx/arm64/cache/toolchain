@@ -1,0 +1,79 @@
+{
+    zig_arch_arm64_plat_macosx = {
+        __global = true,
+        plat = "macosx",
+        arch = "arm64"
+    },
+    gfortran_arch_arm64_plat_macosx = {
+        __global = true,
+        __checked = true,
+        plat = "macosx",
+        arch = "arm64"
+    },
+    cuda_arch_arm64_plat_macosx = {
+        __global = true,
+        __checked = true,
+        plat = "macosx",
+        arch = "arm64"
+    },
+    envs_arch_arm64_plat_macosx = {
+        __global = true,
+        __checked = true,
+        plat = "macosx",
+        arch = "arm64"
+    },
+    rust_arch_arm64_plat_macosx = {
+        __global = true,
+        __checked = true,
+        plat = "macosx",
+        arch = "arm64"
+    },
+    gcc_arch_arm64_plat_macosx = {
+        __global = true,
+        plat = "macosx",
+        arch = "arm64"
+    },
+    yasm_arch_arm64_plat_macosx = {
+        __global = true,
+        __checked = true,
+        plat = "macosx",
+        arch = "arm64"
+    },
+    fpc_arch_arm64_plat_macosx = {
+        __global = true,
+        __checked = true,
+        plat = "macosx",
+        arch = "arm64"
+    },
+    nasm_arch_arm64_plat_macosx = {
+        __global = true,
+        __checked = true,
+        plat = "macosx",
+        arch = "arm64"
+    },
+    go_arch_arm64_plat_macosx = {
+        __global = true,
+        __checked = true,
+        plat = "macosx",
+        arch = "arm64"
+    },
+    xcode_arch_arm64_plat_macosx = {
+        bindir = "/Library/Developer/CommandLineTools/usr/bin",
+        plat = "macosx",
+        arch = "arm64",
+        __global = true,
+        xcode_sysroot = "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        __checked = true
+    },
+    clang_arch_arm64_plat_macosx = {
+        __global = true,
+        plat = "macosx",
+        arch = "arm64"
+    },
+    nim_arch_arm64_plat_macosx = {
+        __global = true,
+        __checked = false,
+        plat = "macosx",
+        arch = "arm64"
+    }
+}
