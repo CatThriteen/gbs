@@ -39,6 +39,7 @@ local function apply_openmp()
     if not get_config("with_openmp") then
         return
     end
+    add_defines("GBS_USE_OPENMP")
     if is_plat("windows") then
         add_cxxflags("/openmp")
     elseif is_plat("macosx") then
@@ -65,20 +66,11 @@ target("fancyIndex")
     end
     apply_openmp()
 
-target("fancyIndex4py")
-    set_kind("shared")
-    set_basename("fancyIndex4py")
-    set_prefixname("")
-    if is_plat("windows") then
-        set_extension(".pyd")
-    else
-        set_extension(".so")
-    end
-
-    -- 关键：不要把 main.cpp 编进 Python 扩展
-    add_files("src/*.cpp", {exclude = "src/main.cpp"})
-
+    target("fancyIndex4py")
+    add_rules("python.library") -- 关键：让 xmake 用正确方式生成 Python 扩展模块
+    add_files("src/*.cpp", {exclude = "src/main.cpp"}) -- 别把 main.cpp 编进扩展
     add_defines("EIGEN_NO_DEBUG")
+
     if not eigen_inc then
         add_packages("eigen")
     else
@@ -98,10 +90,8 @@ target("fancyIndex4py")
         add_includedirs(python_inc, {public = true})
     end
 
-    -- macOS 上通常不强制链接 libpython，允许 undefined dynamic_lookup 更稳
-    if is_plat("macosx") then
-        add_ldflags("-undefined", "dynamic_lookup", {force = true})
-    elseif python_libdir and python_libname then
+    -- Windows 仍然需要显式链接 pythonXY.lib（你 workflow 已经导出 PYTHON_LIBDIR/PYTHON_LIBNAME 就行）
+    if is_plat("windows") and python_libdir and python_libname then
         add_linkdirs(python_libdir)
         add_links(python_libname)
     end
