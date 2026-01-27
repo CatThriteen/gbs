@@ -103,7 +103,7 @@ target("fancyIndex4py")
 
     -- macOS：允许 Python 符号在加载时由解释器解析（否则会全是 _Py... undefined）
     if is_plat("macosx") then
-        add_ldflags("-undefined", "dynamic_lookup", {force = true})
+        add_shflags("-undefined", "dynamic_lookup", {force = true})
     end
 
     -- Windows：用 MSVC toolchain + pythonXY.lib（由 workflow 导出 PYTHON_LIBDIR/PYTHON_LIBNAME）
