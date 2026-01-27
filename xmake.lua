@@ -14,18 +14,20 @@ option("with_openmp")
     set_description("Enable OpenMP")
 option_end()
 
-local use_system     = get_config("use_system_deps")
-local eigen_inc      = os.getenv("EIGEN_INCLUDE")
-local eigen3_inc     = os.getenv("EIGEN3_INCLUDE")
-local pybind_inc     = os.getenv("PYBIND11_INCLUDE")
-local python_inc     = os.getenv("PYTHON_INCLUDE")
-local python_libdir  = os.getenv("PYTHON_LIBDIR")
+local use_system = get_config("use_system_deps")
+local eigen_inc = os.getenv("EIGEN_INCLUDE")
+local eigen3_inc = os.getenv("EIGEN3_INCLUDE")
+local pybind_inc = os.getenv("PYBIND11_INCLUDE")
+local python_inc = os.getenv("PYTHON_INCLUDE")
+local python_libdir = os.getenv("PYTHON_LIBDIR")
 local python_libname = os.getenv("PYTHON_LIBNAME")
 
+-- 如果用户只给了 EIGEN_INCLUDE，但里面含 eigen3 子目录，则自动补一个兼容路径
 if not eigen3_inc and eigen_inc and os.isdir(path.join(eigen_inc, "eigen3")) then
     eigen3_inc = path.join(eigen_inc, "eigen3")
 end
 
+-- xmake-repo 里更通用的包名是 eigen（不是 eigen3）
 if not eigen_inc then
     add_requires("eigen", {system = use_system})
 end
@@ -38,19 +40,14 @@ local function apply_openmp()
         return
     end
     add_defines("GBS_USE_OPENMP")
-
     if is_plat("windows") then
-        -- MSVC: /openmp
         add_cxxflags("/openmp")
     elseif is_plat("macosx") then
-        -- 如果你未来想在 macOS 打开 OpenMP，需要额外装 libomp
         add_cxxflags("-Xpreprocessor", "-fopenmp")
         add_ldflags("-lomp")
-        add_shflags("-lomp")
     else
         add_cxxflags("-fopenmp")
         add_ldflags("-fopenmp")
-        add_shflags("-fopenmp")
         add_links("gomp")
     end
 end
@@ -59,7 +56,6 @@ target("fancyIndex")
     set_kind("binary")
     add_files("src/main.cpp", "src/fancyIndex.cpp")
     add_defines("EIGEN_NO_DEBUG")
-
     if not eigen_inc then
         add_packages("eigen")
     else
@@ -68,13 +64,21 @@ target("fancyIndex")
     if eigen3_inc then
         add_includedirs(eigen3_inc, {public = true})
     end
-
     apply_openmp()
 
 target("fancyIndex4py")
-    -- 用 python.module（若你的 xmake 太旧没有该规则，可改回 python.library）
-    add_rules("python.module", {soabi = true}) -- 生成 cpython-310/312 的 soabi 名称 :contentReference[oaicite:2]{index=2}
+    -- 用 python.module（python.library 已 deprecated）
+    add_rules("python.module")
 
+    set_basename("fancyIndex4py")
+    set_prefixname("")
+    if is_plat("windows") then
+        set_extension(".pyd")
+    else
+        set_extension(".so")
+    end
+
+    -- 别把 main.cpp 编进扩展
     add_files("src/*.cpp", {exclude = "src/main.cpp"})
     add_defines("EIGEN_NO_DEBUG")
 
@@ -97,12 +101,12 @@ target("fancyIndex4py")
         add_includedirs(python_inc, {public = true})
     end
 
-    -- ✅ macOS: Python 扩展模块不要在链接期强行解析 _Py*，用 dynamic_lookup
+    -- macOS：允许 Python 符号在加载时由解释器解析（否则会全是 _Py... undefined）
     if is_plat("macosx") then
-        add_shflags("-undefined", "dynamic_lookup", {force = true})
+        add_ldflags("-undefined", "dynamic_lookup", {force = true})
     end
 
-    -- ✅ Windows: MSVC 下需要显式链接 pythonXY.lib（workflow 会导出这两个环境变量）
+    -- Windows：用 MSVC toolchain + pythonXY.lib（由 workflow 导出 PYTHON_LIBDIR/PYTHON_LIBNAME）
     if is_plat("windows") and python_libdir and python_libname then
         add_linkdirs(python_libdir)
         add_links(python_libname)
