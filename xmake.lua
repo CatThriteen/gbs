@@ -16,10 +16,15 @@ option_end()
 
 local use_system = get_config("use_system_deps")
 local eigen_inc = os.getenv("EIGEN_INCLUDE")
+local eigen3_inc = os.getenv("EIGEN3_INCLUDE")
 local pybind_inc = os.getenv("PYBIND11_INCLUDE")
 local python_inc = os.getenv("PYTHON_INCLUDE")
 local python_libdir = os.getenv("PYTHON_LIBDIR")
 local python_libname = os.getenv("PYTHON_LIBNAME")
+
+if not eigen3_inc and eigen_inc and os.isdir(path.join(eigen_inc, "eigen3")) then
+    eigen3_inc = path.join(eigen_inc, "eigen3")
+end
 
 if not eigen_inc then
     add_requires("eigen3", {system = use_system})
@@ -54,6 +59,9 @@ target("fancyIndex")
     else
         add_includedirs(eigen_inc, {public = true})
     end
+    if eigen3_inc then
+        add_includedirs(eigen3_inc, {public = true})
+    end
     apply_openmp()
 
 target("fancyIndex4py")
@@ -71,6 +79,9 @@ target("fancyIndex4py")
         add_packages("eigen3")
     else
         add_includedirs(eigen_inc, {public = true})
+    end
+    if eigen3_inc then
+        add_includedirs(eigen3_inc, {public = true})
     end
     if not pybind_inc then
         add_packages("pybind11")
