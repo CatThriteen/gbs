@@ -2,7 +2,9 @@
 #include <cmath>
 #include <Eigen/Dense>
 #include <iostream>
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 #include <vector>
 using namespace Eigen;
 using namespace std;
@@ -11,7 +13,9 @@ MatrixXb fancyIndex(MatrixXb data, MatrixXi index) {
   Eigen::Matrix<uint8_t, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> tmp(
       index.rows() * data.rows(), index.cols());
 
+#ifdef _OPENMP
 #pragma omp parallel for
+#endif
   for (int i = 0; i < index.rows(); ++i) {
     for (int j = 0; j < index.cols(); ++j) {
       for (int k = 0; k < data.rows(); ++k) {
