@@ -29,15 +29,31 @@ jobs:
       - name: Export include paths
         shell: bash
         run: |
-          echo "PYBIND11_INCLUDE=$(python - <<'PY'\nimport pybind11; print(pybind11.get_include())\nPY)" >> $GITHUB_ENV
-          echo "PYTHON_INCLUDE=$(python - <<'PY'\nimport sysconfig; print(sysconfig.get_paths()['include'])\nPY)" >> $GITHUB_ENV
+          echo "PYBIND11_INCLUDE=$(python -c 'import pybind11;print(pybind11.get_include())')" >> $GITHUB_ENV
+          echo "PYTHON_INCLUDE=$(python -c 'import sysconfig;print(sysconfig.get_paths()[\"include\"])')" >> $GITHUB_ENV
 
-      - name: Build
+      - name: Show repo tree (debug)
         shell: bash
         run: |
-          cd recognition/GBS_ELM
-          # 如果 macOS 上 OpenMP 报错可改成: --with_openmp=n
+          pwd
+          ls -la
+          ls -la recognition || true
+          ls -la recognition/GBS_ELM || true
+
+      - name: Build (Linux/Windows)
+        if: matrix.os != 'macos-latest'
+        shell: bash
+        working-directory: GBS_ELM
+        run: |
           xmake f -c -m release
+          xmake
+
+      - name: Build (macOS, no OpenMP)
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        working-directory: GBS_ELM
+        run: |
+          xmake f -c -m release --with_openmp=n
           xmake
 
       - name: Upload artifacts
@@ -45,5 +61,5 @@ jobs:
         with:
           name: gbs-elm-${{ matrix.os }}-py${{ matrix.python }}
           path: |
-            recognition/GBS_ELM/build/**/fancyIndex4py.*
-            recognition/GBS_ELM/build/**/fancyIndex*
+            GBS_ELM/build/**/fancyIndex4py.*
+            GBS_ELM/build/**/fancyIndex*
