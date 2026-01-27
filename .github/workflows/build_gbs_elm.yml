@@ -22,6 +22,8 @@ jobs:
           python-version: ${{ matrix.python }}
 
       - uses: xmake-io/github-action-setup-xmake@v1
+        with:
+          xmake-version: "3.0.6"
 
       - name: Update xmake-repo
         shell: bash
@@ -52,7 +54,8 @@ jobs:
         shell: bash
         working-directory: ${{ env.XMAKE_DIR }}
         run: |
-          xmake -y f -c -m release
+          rm -rf .xmake build
+          xmake f -y -m release
           xmake -y
 
       - name: Build (macOS, no OpenMP)
@@ -60,8 +63,10 @@ jobs:
         shell: bash
         working-directory: ${{ env.XMAKE_DIR }}
         run: |
-          xmake -y f -c -m release --with_openmp=n
+          rm -rf .xmake build
+          xmake f -y -m release --with_openmp=n
           xmake -y
+
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

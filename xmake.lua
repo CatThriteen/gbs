@@ -41,7 +41,6 @@ local function apply_openmp()
     end
     if is_plat("windows") then
         add_cxxflags("/openmp")
-        add_ldflags("/openmp")
     elseif is_plat("macosx") then
         add_cxxflags("-Xpreprocessor", "-fopenmp")
         add_ldflags("-lomp")
