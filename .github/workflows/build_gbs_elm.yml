@@ -57,8 +57,8 @@ jobs:
           fi
           echo "XMAKE_DIR=$XMAKE_DIR" >> "$GITHUB_ENV"
 
-      - name: Build (Linux/Windows)
-        if: matrix.os != 'macos-latest'
+      - name: Build (Linux)
+        if: matrix.os == 'ubuntu-latest'
         shell: bash
         working-directory: ${{ env.XMAKE_DIR }}
         run: |
@@ -73,6 +73,15 @@ jobs:
         run: |
           rm -rf .xmake build
           xmake f -y -m release --with_openmp=n
+          xmake -y
+
+      - name: Build (Windows, MSVC)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        working-directory: ${{ env.XMAKE_DIR }}
+        run: |
+          Remove-Item -Recurse -Force .xmake, build -ErrorAction SilentlyContinue
+          xmake f -y -m release --toolchain=msvc
           xmake -y
 
       - name: Upload artifacts

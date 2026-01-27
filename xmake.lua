@@ -66,9 +66,20 @@ target("fancyIndex")
     end
     apply_openmp()
 
-    target("fancyIndex4py")
-    add_rules("python.library") -- 关键：让 xmake 用正确方式生成 Python 扩展模块
-    add_files("src/*.cpp", {exclude = "src/main.cpp"}) -- 别把 main.cpp 编进扩展
+target("fancyIndex4py")
+    -- 用 python.module（python.library 已 deprecated）
+    add_rules("python.module")
+
+    set_basename("fancyIndex4py")
+    set_prefixname("")
+    if is_plat("windows") then
+        set_extension(".pyd")
+    else
+        set_extension(".so")
+    end
+
+    -- 别把 main.cpp 编进扩展
+    add_files("src/*.cpp", {exclude = "src/main.cpp"})
     add_defines("EIGEN_NO_DEBUG")
 
     if not eigen_inc then
@@ -90,7 +101,12 @@ target("fancyIndex")
         add_includedirs(python_inc, {public = true})
     end
 
-    -- Windows 仍然需要显式链接 pythonXY.lib（你 workflow 已经导出 PYTHON_LIBDIR/PYTHON_LIBNAME 就行）
+    -- macOS：允许 Python 符号在加载时由解释器解析（否则会全是 _Py... undefined）
+    if is_plat("macosx") then
+        add_ldflags("-undefined", "dynamic_lookup", {force = true})
+    end
+
+    -- Windows：用 MSVC toolchain + pythonXY.lib（由 workflow 导出 PYTHON_LIBDIR/PYTHON_LIBNAME）
     if is_plat("windows") and python_libdir and python_libname then
         add_linkdirs(python_libdir)
         add_links(python_libname)
