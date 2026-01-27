@@ -3,7 +3,7 @@
 #include <random>
 #include <cmath>
 #include <numeric>
-#include <eigen3/Eigen/Dense>
+#include <Eigen/Dense>
 #include <unordered_map>
 #include <chrono> // 用于统计运行时间
 #include "fancyIndex.h"

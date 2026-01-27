@@ -23,6 +23,10 @@ jobs:
 
       - uses: xmake-io/github-action-setup-xmake@v1
 
+      - name: Update xmake-repo
+        shell: bash
+        run: xrepo update-repo
+
       - name: Install pybind11
         run: python -m pip install --upgrade pip pybind11
 
@@ -37,7 +41,7 @@ jobs:
       - name: Locate xmake.lua
         shell: bash
         run: |
-          XMAKE_DIR=$(dirname "$(find . -maxdepth 4 -name xmake.lua -print -quit)")
+          XMAKE_DIR=$(dirname "$(find . -maxdepth 6 -name xmake.lua -print -quit)")
           if [ -z "$XMAKE_DIR" ]; then
             echo "xmake.lua not found"; exit 1
           fi
@@ -48,16 +52,16 @@ jobs:
         shell: bash
         working-directory: ${{ env.XMAKE_DIR }}
         run: |
-          xmake f -c -m release
-          xmake
+          xmake -y f -c -m release
+          xmake -y
 
       - name: Build (macOS, no OpenMP)
         if: matrix.os == 'macos-latest'
         shell: bash
         working-directory: ${{ env.XMAKE_DIR }}
         run: |
-          xmake f -c -m release --with_openmp=n
-          xmake
+          xmake -y f -c -m release --with_openmp=n
+          xmake -y
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

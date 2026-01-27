@@ -1,7 +1,7 @@
 #ifndef FANCYINDEX_H
 #define FANCYINDEX_H
 
-#include <eigen3/Eigen/Dense>
+#include <Eigen/Dense>
 #include <vector>
 #include <complex>
 #include <cmath>

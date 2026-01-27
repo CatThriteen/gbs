@@ -1,6 +1,6 @@
 #include "fancyIndex.h"
 #include <cmath>
-#include <eigen3/Eigen/Dense>
+#include <Eigen/Dense>
 #include <iostream>
 #include <omp.h>
 #include <vector>

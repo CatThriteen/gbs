@@ -5,7 +5,7 @@ set_languages("c++17")
 option("use_system_deps")
     set_default(false)
     set_showmenu(true)
-    set_description("Use system-installed eigen3/pybind11 instead of downloading")
+    set_description("Use system-installed eigen/pybind11 instead of downloading")
 option_end()
 
 option("with_openmp")
@@ -22,12 +22,14 @@ local python_inc = os.getenv("PYTHON_INCLUDE")
 local python_libdir = os.getenv("PYTHON_LIBDIR")
 local python_libname = os.getenv("PYTHON_LIBNAME")
 
+-- 如果用户只给了 EIGEN_INCLUDE，但里面含 eigen3 子目录，则自动补一个兼容路径
 if not eigen3_inc and eigen_inc and os.isdir(path.join(eigen_inc, "eigen3")) then
     eigen3_inc = path.join(eigen_inc, "eigen3")
 end
 
+-- xmake-repo 里更通用的包名是 eigen（不是 eigen3）
 if not eigen_inc then
-    add_requires("eigen3", {system = use_system})
+    add_requires("eigen", {system = use_system})
 end
 if not pybind_inc then
     add_requires("pybind11", {system = use_system})
@@ -55,7 +57,7 @@ target("fancyIndex")
     add_files("src/main.cpp", "src/fancyIndex.cpp")
     add_defines("EIGEN_NO_DEBUG")
     if not eigen_inc then
-        add_packages("eigen3")
+        add_packages("eigen")
     else
         add_includedirs(eigen_inc, {public = true})
     end
@@ -73,26 +75,36 @@ target("fancyIndex4py")
     else
         set_extension(".so")
     end
-    add_files("src/*.cpp")
+
+    -- 关键：不要把 main.cpp 编进 Python 扩展
+    add_files("src/*.cpp", {exclude = "src/main.cpp"})
+
     add_defines("EIGEN_NO_DEBUG")
     if not eigen_inc then
-        add_packages("eigen3")
+        add_packages("eigen")
     else
         add_includedirs(eigen_inc, {public = true})
     end
     if eigen3_inc then
         add_includedirs(eigen3_inc, {public = true})
     end
+
     if not pybind_inc then
         add_packages("pybind11")
     else
         add_includedirs(pybind_inc, {public = true})
     end
+
     if python_inc then
         add_includedirs(python_inc, {public = true})
     end
-    if python_libdir and python_libname then
+
+    -- macOS 上通常不强制链接 libpython，允许 undefined dynamic_lookup 更稳
+    if is_plat("macosx") then
+        add_ldflags("-undefined", "dynamic_lookup", {force = true})
+    elseif python_libdir and python_libname then
         add_linkdirs(python_libdir)
         add_links(python_libname)
     end
+
     apply_openmp()

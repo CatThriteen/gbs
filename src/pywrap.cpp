@@ -2,7 +2,6 @@
 #include <pybind11/eigen.h>
 #include <pybind11/stl.h>
 #include <pybind11/complex.h>
-// #include <eigen3/Eigen/Dense>
 #include "fancyIndex.h"
 
 
