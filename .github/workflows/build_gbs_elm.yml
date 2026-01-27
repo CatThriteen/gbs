@@ -29,21 +29,24 @@ jobs:
       - name: Export include paths
         shell: bash
         run: |
-          echo "PYBIND11_INCLUDE=$(python -c 'import pybind11;print(pybind11.get_include())')" >> $GITHUB_ENV
-          echo "PYTHON_INCLUDE=$(python -c 'import sysconfig;print(sysconfig.get_paths()[\"include\"])')" >> $GITHUB_ENV
+          PYBIND11_INCLUDE=$(python -c 'import pybind11;print(pybind11.get_include())')
+          PYTHON_INCLUDE=$(python -c 'import sysconfig;print(sysconfig.get_paths()["include"])')
+          echo "PYBIND11_INCLUDE=$PYBIND11_INCLUDE" >> "$GITHUB_ENV"
+          echo "PYTHON_INCLUDE=$PYTHON_INCLUDE" >> "$GITHUB_ENV"
 
-      - name: Show repo tree (debug)
+      - name: Locate xmake.lua
         shell: bash
         run: |
-          pwd
-          ls -la
-          ls -la recognition || true
-          ls -la recognition/GBS_ELM || true
+          XMAKE_DIR=$(dirname "$(find . -maxdepth 4 -name xmake.lua -print -quit)")
+          if [ -z "$XMAKE_DIR" ]; then
+            echo "xmake.lua not found"; exit 1
+          fi
+          echo "XMAKE_DIR=$XMAKE_DIR" >> "$GITHUB_ENV"
 
       - name: Build (Linux/Windows)
         if: matrix.os != 'macos-latest'
         shell: bash
-        working-directory: GBS_ELM
+        working-directory: ${{ env.XMAKE_DIR }}
         run: |
           xmake f -c -m release
           xmake
@@ -51,7 +54,7 @@ jobs:
       - name: Build (macOS, no OpenMP)
         if: matrix.os == 'macos-latest'
         shell: bash
-        working-directory: GBS_ELM
+        working-directory: ${{ env.XMAKE_DIR }}
         run: |
           xmake f -c -m release --with_openmp=n
           xmake
@@ -61,5 +64,5 @@ jobs:
         with:
           name: gbs-elm-${{ matrix.os }}-py${{ matrix.python }}
           path: |
-            GBS_ELM/build/**/fancyIndex4py.*
-            GBS_ELM/build/**/fancyIndex*
+            ${{ env.XMAKE_DIR }}/build/**/fancyIndex4py.*
+            ${{ env.XMAKE_DIR }}/build/**/fancyIndex*
