@@ -106,86 +106,66 @@ jobs:
       matrix:
         py: ["310", "311", "312"]
     runs-on: ubuntu-latest
-    container:
-      image: quay.io/pypa/manylinux2014_x86_64
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Select Python
-        shell: bash
-        run: |
-          case "${{ matrix.py }}" in
-            310) echo "/opt/python/cp310-cp310/bin" >> $GITHUB_PATH ;;
-            311) echo "/opt/python/cp311-cp311/bin" >> $GITHUB_PATH ;;
-            312) echo "/opt/python/cp312-cp312/bin" >> $GITHUB_PATH ;;
-            *) echo "unsupported py=${{ matrix.py }}"; exit 1 ;;
-          esac
-          python -V
-
-      - name: Install deps (git, zip)
-        shell: bash
-        run: |
-          yum -y install git zip || true
-
-      - name: Install xmake
-        shell: bash
-        run: |
-          curl -fsSL https://xmake.io/shget.text | bash
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-          xmake --version
-
-      - name: Update xmake-repo
-        shell: bash
-        run: xmake repo --update
-
-      - name: Install pybind11
-        shell: bash
-        run: python -m pip install --upgrade pip pybind11
-
-      - name: Export include paths
-        shell: bash
-        run: |
-          PYBIND11_INCLUDE=$(python -c 'import pybind11;print(pybind11.get_include())')
-          PYTHON_INCLUDE=$(python -c 'import sysconfig;print(sysconfig.get_paths()["include"])')
-          echo "PYBIND11_INCLUDE=$PYBIND11_INCLUDE" >> "$GITHUB_ENV"
-          echo "PYTHON_INCLUDE=$PYTHON_INCLUDE" >> "$GITHUB_ENV"
 
       - name: Locate xmake.lua
         shell: bash
         run: |
           XMAKE_DIR=$(dirname "$(find . -maxdepth 6 -name xmake.lua -print -quit)")
-          if [ -z "$XMAKE_DIR" ]; then
-            echo "xmake.lua not found"; exit 1
-          fi
+          if [ -z "$XMAKE_DIR" ]; then echo "xmake.lua not found"; exit 1; fi
           echo "XMAKE_DIR=$XMAKE_DIR" >> "$GITHUB_ENV"
 
-      - name: Build (Linux manylinux2014)
+      - name: Build in manylinux2014 via docker
         shell: bash
-        working-directory: ${{ env.XMAKE_DIR }}
         run: |
-          rm -rf .xmake build
-          xmake f -y -m release
-          xmake -y
+          set -eux
+          case "${{ matrix.py }}" in
+            310) PYBIN=cp310-cp310 ;;
+            311) PYBIN=cp311-cp311 ;;
+            312) PYBIN=cp312-cp312 ;;
+            *) exit 1 ;;
+          esac
 
-      - name: Collect native to prebuilt/
-        shell: bash
-        run: |
-          PY=${{ matrix.py }}
-          python tools/collect_native.py --src "${{ env.XMAKE_DIR }}/build" --dst "${GITHUB_WORKSPACE}/prebuilt" --os "linux" --arch "x86_64" --py "$PY"
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE":/work -w /work \
+            quay.io/pypa/manylinux2014_x86_64 \
+            bash -lc "
+              set -eux
+              export PATH=/opt/python/${PYBIN}/bin:\$PATH
+              python -V
+              python -m pip install -U pip pybind11
+              curl -fsSL https://xmake.io/shget.text | bash
+              export PATH=\$HOME/.local/bin:\$PATH
+              xmake repo --update
 
-      - name: Smoke test (import via loader)
+              PYBIND11_INCLUDE=\$(python -c 'import pybind11;print(pybind11.get_include())')
+              PYTHON_INCLUDE=\$(python -c 'import sysconfig;print(sysconfig.get_paths()[\"include\"])')
+              export PYBIND11_INCLUDE PYTHON_INCLUDE
+
+              cd \"$XMAKE_DIR\"
+              rm -rf .xmake build
+              xmake f -y -m release
+              xmake -y
+            "
+
+          python tools/collect_native.py \
+            --src "${{ env.XMAKE_DIR }}/build" \
+            --dst "${GITHUB_WORKSPACE}/prebuilt" \
+            --os linux --arch x86_64 --py "${{ matrix.py }}"
+
+      - name: Smoke test
         shell: bash
-        run: |
-          python run.py
+        run: python run.py
 
       - name: Upload artifacts (prebuilt)
         uses: actions/upload-artifact@v4
         with:
           name: gbs-elm-linux-manylinux-py${{ matrix.py }}
           if-no-files-found: error
-          path: |
-            prebuilt/**
+          path: prebuilt/**
+
 
   assemble:
     needs: [build-macos-windows, build-linux-manylinux]
