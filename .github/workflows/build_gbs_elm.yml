@@ -6,12 +6,12 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-macos-windows:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        python: ["3.10", "3.12"]
+        os: [macos-latest, windows-latest]
+        python: ["3.10", "3.11","3.12"]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -30,6 +30,7 @@ jobs:
         run: xmake repo --update
 
       - name: Install pybind11
+        shell: bash
         run: python -m pip install --upgrade pip pybind11
 
       - name: Export include paths
@@ -57,15 +58,6 @@ jobs:
           fi
           echo "XMAKE_DIR=$XMAKE_DIR" >> "$GITHUB_ENV"
 
-      - name: Build (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        shell: bash
-        working-directory: ${{ env.XMAKE_DIR }}
-        run: |
-          rm -rf .xmake build
-          xmake f -y -m release
-          xmake -y
-
       - name: Build (macOS, no OpenMP)
         if: matrix.os == 'macos-latest'
         shell: bash
@@ -84,10 +76,165 @@ jobs:
           xmake f -y -m release --toolchain=msvc
           xmake -y
 
-      - name: Upload artifacts
+      # 2) 收集到 prebuilt/ 结构
+      - name: Collect native to prebuilt/
+        shell: bash
+        run: |
+          OS=$(python -c "import sys; print('windows' if sys.platform.startswith('win') else 'macos' if sys.platform=='darwin' else 'linux')")
+          ARCH=$(python -c "import platform; m=platform.machine().lower(); print('x86_64' if m in ('x86_64','amd64') else m)")
+          PY=$(python -c "import sys; print(f'{sys.version_info[0]}{sys.version_info[1]}')")
+          python tools/collect_native.py --src "${{ env.XMAKE_DIR }}/build" --dst "${GITHUB_WORKSPACE}/prebuilt" --os "$OS" --arch "$ARCH" --py "$PY"
+
+      # 1) 运行时验收：用 loader 做 import smoke
+      - name: Smoke test (import via loader)
+        shell: bash
+        run: |
+          python run.py
+
+      # 上传的应是 prebuilt/**（而不是 build/**）
+      - name: Upload artifacts (prebuilt)
         uses: actions/upload-artifact@v4
         with:
           name: gbs-elm-${{ matrix.os }}-py${{ matrix.python }}
+          if-no-files-found: error
           path: |
-            ${{ env.XMAKE_DIR }}/build/**/fancyIndex4py.*
-            ${{ env.XMAKE_DIR }}/build/**/fancyIndex*
+            prebuilt/**
+
+  build-linux-manylinux:
+    strategy:
+      fail-fast: false
+      matrix:
+        py: ["310", "311", "312"]
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/pypa/manylinux2014_x86_64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Python
+        shell: bash
+        run: |
+          case "${{ matrix.py }}" in
+            310) echo "/opt/python/cp310-cp310/bin" >> $GITHUB_PATH ;;
+            311) echo "/opt/python/cp311-cp311/bin" >> $GITHUB_PATH ;;
+            312) echo "/opt/python/cp312-cp312/bin" >> $GITHUB_PATH ;;
+            *) echo "unsupported py=${{ matrix.py }}"; exit 1 ;;
+          esac
+          python -V
+
+      - name: Install deps (git, zip)
+        shell: bash
+        run: |
+          yum -y install git zip || true
+
+      - name: Install xmake
+        shell: bash
+        run: |
+          curl -fsSL https://xmake.io/shget.text | bash
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          xmake --version
+
+      - name: Update xmake-repo
+        shell: bash
+        run: xmake repo --update
+
+      - name: Install pybind11
+        shell: bash
+        run: python -m pip install --upgrade pip pybind11
+
+      - name: Export include paths
+        shell: bash
+        run: |
+          PYBIND11_INCLUDE=$(python -c 'import pybind11;print(pybind11.get_include())')
+          PYTHON_INCLUDE=$(python -c 'import sysconfig;print(sysconfig.get_paths()["include"])')
+          echo "PYBIND11_INCLUDE=$PYBIND11_INCLUDE" >> "$GITHUB_ENV"
+          echo "PYTHON_INCLUDE=$PYTHON_INCLUDE" >> "$GITHUB_ENV"
+
+      - name: Locate xmake.lua
+        shell: bash
+        run: |
+          XMAKE_DIR=$(dirname "$(find . -maxdepth 6 -name xmake.lua -print -quit)")
+          if [ -z "$XMAKE_DIR" ]; then
+            echo "xmake.lua not found"; exit 1
+          fi
+          echo "XMAKE_DIR=$XMAKE_DIR" >> "$GITHUB_ENV"
+
+      - name: Build (Linux manylinux2014)
+        shell: bash
+        working-directory: ${{ env.XMAKE_DIR }}
+        run: |
+          rm -rf .xmake build
+          xmake f -y -m release
+          xmake -y
+
+      - name: Collect native to prebuilt/
+        shell: bash
+        run: |
+          PY=${{ matrix.py }}
+          python tools/collect_native.py --src "${{ env.XMAKE_DIR }}/build" --dst "${GITHUB_WORKSPACE}/prebuilt" --os "linux" --arch "x86_64" --py "$PY"
+
+      - name: Smoke test (import via loader)
+        shell: bash
+        run: |
+          python run.py
+
+      - name: Upload artifacts (prebuilt)
+        uses: actions/upload-artifact@v4
+        with:
+          name: gbs-elm-linux-manylinux-py${{ matrix.py }}
+          if-no-files-found: error
+          path: |
+            prebuilt/**
+
+  assemble:
+    needs: [build-macos-windows, build-linux-manylinux]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: _artifacts
+
+      - name: Merge prebuilt/
+        shell: bash
+        run: |
+          rm -rf prebuilt
+          mkdir -p prebuilt
+          for d in _artifacts/*; do
+            if [ -d "$d/prebuilt" ]; then
+              rsync -a "$d/prebuilt/" prebuilt/
+            fi
+          done
+          echo "Merged prebuilt tree:"
+          find prebuilt -maxdepth 4 -type f -print
+
+      # 4) 组装成最终可交付 zip（排除 build/.xmake 等）
+      - name: Create bundle zip
+        shell: bash
+        run: |
+          rm -rf _bundle
+          mkdir -p _bundle
+          rsync -a . _bundle/ \
+            --exclude ".git/" \
+            --exclude ".github/" \
+            --exclude ".vscode/" \
+            --exclude "build/" \
+            --exclude ".xmake/" \
+            --exclude "**/.deps/" \
+            --exclude "**/.objs/" \
+            --exclude "**/.build_cache/" \
+            --exclude "_artifacts/" \
+            --exclude "_bundle/"
+          cd _bundle
+          zip -r ../GBS_ELM_bundle.zip .
+
+      - name: Upload bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: GBS_ELM_bundle
+          if-no-files-found: error
+          path: GBS_ELM_bundle.zip
