@@ -79,8 +79,10 @@ jobs:
       - name: Collect native to prebuilt/
         shell: bash
         run: |
+          set -eux
+          rm -rf prebuilt
           OS=$(python -c "import sys; print('windows' if sys.platform.startswith('win') else 'macos' if sys.platform=='darwin' else 'linux')")
-          ARCH=$(python -c "import platform; m=platform.machine().lower(); print('x86_64' if m in ('x86_64','amd64') else m)")
+          ARCH=$(python -c "import platform; m=platform.machine().lower(); print('x86_64' if m in ('x86_64','amd64') else 'arm64' if m in ('arm64','aarch64') else m)")
           PY=$(python -c "import sys; print(f'{sys.version_info[0]}{sys.version_info[1]}')")
           python tools/collect_native.py \
             --src "${{ env.XMAKE_DIR }}/build" \
@@ -91,7 +93,7 @@ jobs:
         shell: bash
         run: |
           echo "=== prebuilt files ==="
-          find prebuilt -maxdepth 4 -type f -print || true
+          find prebuilt -maxdepth 6 -type f -print || true
 
       - name: Smoke test (import via loader)
         shell: bash
@@ -103,7 +105,8 @@ jobs:
           name: gbs-elm-${{ matrix.os }}-py${{ matrix.python }}
           if-no-files-found: error
           overwrite: true
-          path: prebuilt/**
+          # 关键：上传目录 prebuilt（不要用 prebuilt/**）
+          path: prebuilt
 
   build-linux-manylinux:
     strategy:
@@ -139,6 +142,7 @@ jobs:
         shell: bash
         run: |
           set -eux
+          rm -rf prebuilt
           docker run --rm \
             --user "$(id -u):$(id -g)" \
             -e HOME=/tmp/home \
@@ -165,7 +169,8 @@ jobs:
               cd /tmp/src/${{ env.XMAKE_DIR }}
               rm -rf .xmake build
 
-              xmake repo --update
+              # 网络抖动时不致命（只影响下载速度/偶发失败）
+              xmake repo --update || true
               xmake f -y -m release
               xmake -y
 
@@ -179,7 +184,7 @@ jobs:
         shell: bash
         run: |
           echo "=== prebuilt files ==="
-          find prebuilt -maxdepth 4 -type f -print || true
+          find prebuilt -maxdepth 6 -type f -print || true
 
       - name: Smoke test
         shell: bash
@@ -191,7 +196,8 @@ jobs:
           name: gbs-elm-linux-manylinux-cp${{ matrix.py }}
           if-no-files-found: error
           overwrite: true
-          path: prebuilt/**
+          # 关键：上传目录 prebuilt（不要用 prebuilt/**）
+          path: prebuilt
 
   assemble:
     needs: [build-macos-windows, build-linux-manylinux]
@@ -208,15 +214,25 @@ jobs:
       - name: Merge prebuilt/
         shell: bash
         run: |
+          set -eux
           rm -rf prebuilt
           mkdir -p prebuilt
+
+          echo "=== downloaded artifacts tree ==="
+          find _artifacts -maxdepth 3 -type f -print || true
+
           for d in _artifacts/*; do
             if [ -d "$d/prebuilt" ]; then
+              echo "Merging: $d/prebuilt/"
               rsync -a "$d/prebuilt/" prebuilt/
+            else
+              echo "Merging (no prebuilt/ folder): $d/"
+              rsync -a "$d/" prebuilt/
             fi
           done
-          echo "Merged prebuilt tree:"
-          find prebuilt -maxdepth 4 -type f -print || true
+
+          echo "=== merged prebuilt tree ==="
+          find prebuilt -maxdepth 6 -type f -print || true
 
       - name: Create bundle zip
         shell: bash
