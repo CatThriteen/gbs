@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import glob
-import os
+import importlib.machinery as mach
 import shutil
 from pathlib import Path
 
@@ -13,13 +13,19 @@ def norm_arch(arch: str) -> str:
         return a
     return a
 
+def is_extension_module(p: Path) -> bool:
+    name = p.name
+    if not name.startswith("fancyIndex4py"):
+        return False
+    return any(name.endswith(suf) for suf in mach.EXTENSION_SUFFIXES)
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--src", required=True, help="xmake build root, e.g. <XMAKE_DIR>/build")
-    ap.add_argument("--dst", required=True, help="prebuilt root, e.g. <repo>/prebuilt")
+    ap.add_argument("--src", required=True)
+    ap.add_argument("--dst", required=True)
     ap.add_argument("--os", required=True, choices=["linux", "macos", "windows"])
-    ap.add_argument("--arch", required=True, help="x86_64/arm64/aarch64")
-    ap.add_argument("--py", required=True, help="310/312 ...")
+    ap.add_argument("--arch", required=True)
+    ap.add_argument("--py", required=True)  # 310/311/312...
     args = ap.parse_args()
 
     src = Path(args.src).resolve()
@@ -33,36 +39,34 @@ def main():
     outdir = dst / f"{args.os}-{arch}" / pytag
     outdir.mkdir(parents=True, exist_ok=True)
 
-    patterns = []
+    # 统一：先把 build 里所有 fancyIndex4py* 找出来，再用 EXTENSION_SUFFIXES 过滤
+    matched = [Path(p) for p in glob.glob(str(src / "**/fancyIndex4py*"), recursive=True)]
+    extmods = [p for p in matched if p.is_file() and is_extension_module(p)]
+
+    # 可选：也收集 CLI 可执行程序
+    binaries = []
     if args.os == "windows":
-        patterns += ["**/fancyIndex4py*.pyd", "**/fancyIndex4py*.dll", "**/fancyIndex*.exe"]
+        binaries = [Path(p) for p in glob.glob(str(src / "**/fancyIndex*.exe"), recursive=True)]
     else:
-        patterns += ["**/fancyIndex4py*.so", "**/fancyIndex*"]
+        binaries = [Path(p) for p in glob.glob(str(src / "**/fancyIndex"), recursive=True)]
 
-    matched = []
-    for pat in patterns:
-        matched.extend([Path(p) for p in glob.glob(str(src / pat), recursive=True)])
+    binaries = [p for p in binaries if p.is_file()]
 
-    files = []
-    for p in matched:
-        if p.is_file():
-            # 过滤掉无关文件（例如 .a/.o/.dSYM 等）
-            if p.suffix in (".o", ".obj", ".a", ".d", ".log"):
-                continue
-            if p.name.endswith((".lib", ".exp")):
-                # Windows: .lib/.exp 不是用户 import 所需，但可保留；这里先不拷
-                continue
-            files.append(p)
-
-    if not files:
-        raise SystemExit(f"[collect_native] no outputs found under: {src}")
+    if not extmods:
+        raise SystemExit(
+            "[collect_native] no extension module found under build.\n"
+            f"  src={src}\n"
+            f"  EXTENSION_SUFFIXES={mach.EXTENSION_SUFFIXES}\n"
+            "  hint: ensure fancyIndex4py target is built."
+        )
 
     copied = []
-    for f in sorted(set(files)):
+    for f in sorted(set(extmods + binaries)):
         target = outdir / f.name
         shutil.copy2(f, target)
         copied.append(str(target))
 
+    print("[collect_native] outdir:", outdir)
     print("[collect_native] copied:")
     for c in copied:
         print("  ", c)

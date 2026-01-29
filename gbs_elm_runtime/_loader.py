@@ -4,6 +4,7 @@ import sys
 import platform
 from pathlib import Path
 from typing import Optional
+import importlib.machinery as mach
 
 _NATIVE: Optional[object] = None
 
@@ -27,6 +28,15 @@ def _arch_id() -> str:
 def _py_tag() -> str:
     return f"cp{sys.version_info[0]}{sys.version_info[1]}"
 
+def _has_extmod(dirpath: Path) -> bool:
+    if not dirpath.exists():
+        return False
+    for suf in mach.EXTENSION_SUFFIXES:
+        # e.g. fancyIndex4py.cpython-310-darwin.so / fancyIndex4py.cp310-win_amd64.pyd
+        if list(dirpath.glob(f"fancyIndex4py*{suf}")):
+            return True
+    return False
+
 def load_native(prebuilt_root: Optional[str] = None):
     global _NATIVE
     if _NATIVE is not None:
@@ -41,15 +51,15 @@ def load_native(prebuilt_root: Optional[str] = None):
 
     cand = root / f"{osid}-{arch}" / pytag
 
-    if not cand.exists():
+    if not _has_extmod(cand):
         raise RuntimeError(
             "Native binary not found.\n"
             f"  platform={osid} arch={arch} python={sys.version_info[0]}.{sys.version_info[1]}\n"
             f"  expected_dir={cand}\n"
+            f"  extension_suffixes={mach.EXTENSION_SUFFIXES}\n"
             f"  prebuilt_root={root}\n"
         )
 
-    # 优先把候选目录放到 sys.path 头部
     sys.path.insert(0, str(cand))
 
     try:

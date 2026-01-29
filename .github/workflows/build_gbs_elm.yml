@@ -11,7 +11,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [macos-latest, windows-latest]
-        python: ["3.10", "3.11","3.12"]
+        python: ["3.10", "3.11", "3.12"]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -76,26 +76,34 @@ jobs:
           xmake f -y -m release --toolchain=msvc
           xmake -y
 
-      # 2) 收集到 prebuilt/ 结构
       - name: Collect native to prebuilt/
         shell: bash
         run: |
           OS=$(python -c "import sys; print('windows' if sys.platform.startswith('win') else 'macos' if sys.platform=='darwin' else 'linux')")
           ARCH=$(python -c "import platform; m=platform.machine().lower(); print('x86_64' if m in ('x86_64','amd64') else m)")
           PY=$(python -c "import sys; print(f'{sys.version_info[0]}{sys.version_info[1]}')")
+          python tools/collect_native.py \
+            --src "${{ env.XMAKE_DIR }}/build" \
+            --dst "${GITHUB_WORKSPACE}/prebuilt" \
+            --os "$OS" --arch "$ARCH" --py "$PY"
 
-      # 1) 运行时验收：用 loader 做 import smoke
+      - name: Show prebuilt tree
+        shell: bash
+        run: |
+          echo "=== prebuilt files ==="
+          find prebuilt -maxdepth 4 -type f -print || true
+
       - name: Smoke test (import via loader)
         shell: bash
         run: |
           python run.py
 
-      # 上传的应是 prebuilt/**（而不是 build/**）
       - name: Upload artifacts (prebuilt)
         uses: actions/upload-artifact@v4
         with:
           name: gbs-elm-${{ matrix.os }}-py${{ matrix.python }}
           if-no-files-found: error
+          overwrite: true
           path: |
             prebuilt/**
 
@@ -146,7 +154,6 @@ jobs:
               curl -fsSL https://xmake.io/shget.text | bash
               export PATH=\$HOME/.local/bin:\$PATH
 
-              # 关键：把正确的 python/pybind include 导出给 xmake，避免它去装 Python 3.13
               PYBIND11_INCLUDE=\$(python -c 'import pybind11;print(pybind11.get_include())')
               PYTHON_INCLUDE=\$(python -c 'import sysconfig;print(sysconfig.get_paths()[\"include\"])')
               export PYBIND11_INCLUDE PYTHON_INCLUDE
@@ -158,10 +165,8 @@ jobs:
               cd /tmp/src/${{ env.XMAKE_DIR }}
               rm -rf .xmake build
 
-              # repo update 可留可不留，但会更慢；先留着也行
               xmake repo --update
-
-              xmake f -y -m release --use_system_deps=n
+              xmake f -y -m release
               xmake -y
 
               python /work/tools/collect_native.py \
@@ -170,6 +175,12 @@ jobs:
                 --os linux --arch x86_64 --py \"${PY}\"
             "
 
+      - name: Show prebuilt tree
+        shell: bash
+        run: |
+          echo "=== prebuilt files ==="
+          find prebuilt -maxdepth 4 -type f -print || true
+
       - name: Smoke test
         shell: bash
         run: python run.py
@@ -177,22 +188,10 @@ jobs:
       - name: Upload artifacts (prebuilt)
         uses: actions/upload-artifact@v4
         with:
-          name: gbs-elm-linux-manylinux-py${{ matrix.python }}
+          name: gbs-elm-linux-manylinux-cp${{ replace(matrix.python, '.', '') }}
           if-no-files-found: error
+          overwrite: true
           path: prebuilt/**
-
-
-      - name: Smoke test
-        shell: bash
-        run: python run.py
-
-      - name: Upload artifacts (prebuilt)
-        uses: actions/upload-artifact@v4
-        with:
-          name: gbs-elm-linux-manylinux-py${{ matrix.py }}
-          if-no-files-found: error
-          path: prebuilt/**
-
 
   assemble:
     needs: [build-macos-windows, build-linux-manylinux]
@@ -217,9 +216,8 @@ jobs:
             fi
           done
           echo "Merged prebuilt tree:"
-          find prebuilt -maxdepth 4 -type f -print
+          find prebuilt -maxdepth 4 -type f -print || true
 
-      # 4) 组装成最终可交付 zip（排除 build/.xmake 等）
       - name: Create bundle zip
         shell: bash
         run: |
@@ -244,4 +242,5 @@ jobs:
         with:
           name: GBS_ELM_bundle
           if-no-files-found: error
+          overwrite: true
           path: GBS_ELM_bundle.zip
