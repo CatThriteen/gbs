@@ -25,9 +25,9 @@ jobs:
         with:
           xmake-version: "3.0.6"
 
-      - name: Update xmake-repo
+      - name: Update xmake-repo (best effort)
         shell: bash
-        run: xmake repo --update
+        run: xmake repo --update || true
 
       - name: Install pybind11
         shell: bash
