@@ -202,7 +202,6 @@ jobs:
   assemble:
     needs: [build-macos-windows, build-linux-manylinux]
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
@@ -217,24 +216,16 @@ jobs:
           set -eux
           rm -rf prebuilt
           mkdir -p prebuilt
-
-          echo "=== downloaded artifacts tree ==="
-          find _artifacts -maxdepth 3 -type f -print || true
-
           for d in _artifacts/*; do
             if [ -d "$d/prebuilt" ]; then
-              echo "Merging: $d/prebuilt/"
               rsync -a "$d/prebuilt/" prebuilt/
             else
-              echo "Merging (no prebuilt/ folder): $d/"
               rsync -a "$d/" prebuilt/
             fi
           done
-
-          echo "=== merged prebuilt tree ==="
           find prebuilt -maxdepth 6 -type f -print || true
 
-      - name: Create bundle zip
+      - name: Create bundle folder
         shell: bash
         run: |
           rm -rf _bundle
@@ -250,13 +241,12 @@ jobs:
             --exclude "**/.build_cache/" \
             --exclude "_artifacts/" \
             --exclude "_bundle/"
-          cd _bundle
-          zip -r ../GBS_ELM_bundle.zip .
 
-      - name: Upload bundle
+      - name: Upload bundle (folder)
         uses: actions/upload-artifact@v4
         with:
           name: GBS_ELM_bundle
           if-no-files-found: error
           overwrite: true
-          path: GBS_ELM_bundle.zip
+          path: _bundle
+
