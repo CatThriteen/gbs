@@ -83,7 +83,6 @@ jobs:
           OS=$(python -c "import sys; print('windows' if sys.platform.startswith('win') else 'macos' if sys.platform=='darwin' else 'linux')")
           ARCH=$(python -c "import platform; m=platform.machine().lower(); print('x86_64' if m in ('x86_64','amd64') else m)")
           PY=$(python -c "import sys; print(f'{sys.version_info[0]}{sys.version_info[1]}')")
-          python tools/collect_native.py --src "${{ env.XMAKE_DIR }}/build" --dst "${GITHUB_WORKSPACE}/prebuilt" --os "$OS" --arch "$ARCH" --py "$PY"
 
       # 1) 运行时验收：用 loader 做 import smoke
       - name: Smoke test (import via loader)
@@ -162,7 +161,7 @@ jobs:
               # repo update 可留可不留，但会更慢；先留着也行
               xmake repo --update
 
-              xmake f -y -m release --use_system_deps=y
+              xmake f -y -m release --use_system_deps=n
               xmake -y
 
               python /work/tools/collect_native.py \
