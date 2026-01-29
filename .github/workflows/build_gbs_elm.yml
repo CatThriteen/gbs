@@ -95,8 +95,7 @@ jobs:
 
       - name: Smoke test (import via loader)
         shell: bash
-        run: |
-          python run.py
+        run: python run.py
 
       - name: Upload artifacts (prebuilt)
         uses: actions/upload-artifact@v4
@@ -104,14 +103,22 @@ jobs:
           name: gbs-elm-${{ matrix.os }}-py${{ matrix.python }}
           if-no-files-found: error
           overwrite: true
-          path: |
-            prebuilt/**
+          path: prebuilt/**
 
   build-linux-manylinux:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.10", "3.11", "3.12"]
+        include:
+          - python: "3.10"
+            py: "310"
+            pybin: "cp310-cp310"
+          - python: "3.11"
+            py: "311"
+            pybin: "cp311-cp311"
+          - python: "3.12"
+            py: "312"
+            pybin: "cp312-cp312"
     runs-on: ubuntu-latest
 
     steps:
@@ -132,13 +139,6 @@ jobs:
         shell: bash
         run: |
           set -eux
-          case "${{ matrix.python }}" in
-            3.10) PYBIN=cp310-cp310; PY=310 ;;
-            3.11) PYBIN=cp311-cp311; PY=311 ;;
-            3.12) PYBIN=cp312-cp312; PY=312 ;;
-            *) exit 1 ;;
-          esac
-
           docker run --rm \
             --user "$(id -u):$(id -g)" \
             -e HOME=/tmp/home \
@@ -147,7 +147,7 @@ jobs:
             bash -lc "
               set -eux
               mkdir -p \$HOME
-              export PATH=/opt/python/${PYBIN}/bin:\$PATH
+              export PATH=/opt/python/${{ matrix.pybin }}/bin:\$PATH
               python -V
 
               python -m pip install -U pip pybind11
@@ -172,7 +172,7 @@ jobs:
               python /work/tools/collect_native.py \
                 --src \"/tmp/src/${{ env.XMAKE_DIR }}/build\" \
                 --dst \"/work/prebuilt\" \
-                --os linux --arch x86_64 --py \"${PY}\"
+                --os linux --arch x86_64 --py \"${{ matrix.py }}\"
             "
 
       - name: Show prebuilt tree
@@ -188,7 +188,7 @@ jobs:
       - name: Upload artifacts (prebuilt)
         uses: actions/upload-artifact@v4
         with:
-          name: gbs-elm-linux-manylinux-cp${{ replace(matrix.python, '.', '') }}
+          name: gbs-elm-linux-manylinux-cp${{ matrix.py }}
           if-no-files-found: error
           overwrite: true
           path: prebuilt/**
