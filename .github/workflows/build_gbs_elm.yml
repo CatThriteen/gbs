@@ -129,11 +129,20 @@ jobs:
           esac
 
           docker run --rm \
+            --user 1000:1000 \
+            -e HOME=/tmp/home \
             -v "$GITHUB_WORKSPACE":/work -w /work \
             quay.io/pypa/manylinux2014_x86_64 \
             bash -lc "
               set -eux
-              export PATH=/opt/python/${PYBIN}/bin:\$PATH
+              mkdir -p \$HOME
+              case '${{ matrix.py }}' in
+                310) PYBIN=cp310-cp310 ;;
+                311) PYBIN=cp311-cp311 ;;
+                312) PYBIN=cp312-cp312 ;;
+                *) exit 1 ;;
+              esac
+              export PATH=/opt/python/\${PYBIN}/bin:\$PATH
               python -V
               python -m pip install -U pip pybind11
               curl -fsSL https://xmake.io/shget.text | bash
@@ -144,11 +153,12 @@ jobs:
               PYTHON_INCLUDE=\$(python -c 'import sysconfig;print(sysconfig.get_paths()[\"include\"])')
               export PYBIND11_INCLUDE PYTHON_INCLUDE
 
-              cd \"$XMAKE_DIR\"
+              cd '${{ env.XMAKE_DIR }}'
               rm -rf .xmake build
               xmake f -y -m release
               xmake -y
             "
+
 
           python tools/collect_native.py \
             --src "${{ env.XMAKE_DIR }}/build" \
