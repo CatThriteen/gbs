@@ -129,13 +129,14 @@ jobs:
           esac
 
           docker run --rm \
-            --user 1000:1000 \
+            --user "$(id -u):$(id -g)" \
             -e HOME=/tmp/home \
             -v "$GITHUB_WORKSPACE":/work -w /work \
             quay.io/pypa/manylinux2014_x86_64 \
             bash -lc "
               set -eux
               mkdir -p \$HOME
+
               case '${{ matrix.py }}' in
                 310) PYBIN=cp310-cp310 ;;
                 311) PYBIN=cp311-cp311 ;;
@@ -144,20 +145,31 @@ jobs:
               esac
               export PATH=/opt/python/\${PYBIN}/bin:\$PATH
               python -V
+
               python -m pip install -U pip pybind11
               curl -fsSL https://xmake.io/shget.text | bash
               export PATH=\$HOME/.local/bin:\$PATH
-              xmake repo --update
 
-              PYBIND11_INCLUDE=\$(python -c 'import pybind11;print(pybind11.get_include())')
-              PYTHON_INCLUDE=\$(python -c 'import sysconfig;print(sysconfig.get_paths()[\"include\"])')
-              export PYBIND11_INCLUDE PYTHON_INCLUDE
+              # 关键：把源码复制到容器本地 /tmp/src 构建，避免写 /work/.xmake
+              rm -rf /tmp/src
+              mkdir -p /tmp/src
+              cp -a /work/. /tmp/src/
 
-              cd '${{ env.XMAKE_DIR }}'
+              cd /tmp/src/${{ env.XMAKE_DIR }}
               rm -rf .xmake build
+
+              xmake repo --update
               xmake f -y -m release
               xmake -y
+
+              # 产物收集回 /work/prebuilt（这里写入很少，通常不会触发 busy）
+              PY=${{ matrix.py }}
+              python /work/tools/collect_native.py \
+                --src \"/tmp/src/${{ env.XMAKE_DIR }}/build\" \
+                --dst \"/work/prebuilt\" \
+                --os linux --arch x86_64 --py \"\$PY\"
             "
+
 
 
           python tools/collect_native.py \
