@@ -1,5 +1,6 @@
 name: Build Linux ARM64 native binaries
 
+# This workflow builds Linux ARM64 native artifacts after the repository is uploaded.
 on:
   workflow_dispatch:
   push:
