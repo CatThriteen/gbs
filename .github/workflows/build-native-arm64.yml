@@ -49,6 +49,8 @@ jobs:
 
       - name: Set up xmake
         uses: xmake-io/github-action-setup-xmake@v1
+        with:
+          xmake-version: "3.0.6"
 
       - name: Install build dependencies
         run: |
@@ -65,8 +67,10 @@ jobs:
 
       - name: Build native targets
         run: |
-          xmake f -m release --plat=linux --arch=arm64 --use_system_deps=true -y
-          xmake build -y fancyIndex fancyIndex4py
+          rm -rf .xmake build
+          xmake repo --update || true
+          xmake f -y -m release --use_system_deps=y
+          xmake -y
 
       - name: Collect prebuilt files
         run: |
