@@ -19,10 +19,10 @@ def _os_id() -> str:
 
 def _arch_id() -> str:
     m = platform.machine().lower()
-    if m == "amd64":
+    if m in ("amd64", "x86_64"):
         return "x86_64"
-    if m in ("x86_64", "arm64", "aarch64"):
-        return m
+    if m in ("arm64", "aarch64"):
+        return "arm64"
     return m
 
 def _py_tag() -> str:

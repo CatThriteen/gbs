@@ -7,10 +7,10 @@ from pathlib import Path
 
 def norm_arch(arch: str) -> str:
     a = arch.lower()
-    if a in ("amd64",):
+    if a in ("amd64", "x86_64"):
         return "x86_64"
-    if a in ("x86_64", "arm64", "aarch64"):
-        return a
+    if a in ("arm64", "aarch64"):
+        return "arm64"
     return a
 
 def is_extension_module(p: Path) -> bool:
